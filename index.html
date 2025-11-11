@@ -1,0 +1,871 @@
+import React, { useState, useEffect } from 'react';
+import { ChefHat, Plus, Send, Lock, LogOut, Search, Moon, Sun, Trash2, Edit3, X, Check, Clock, Flame, Star, Sparkles } from 'lucide-react';
+
+const App = () => {
+  const [activeSection, setActiveSection] = useState('opus-soir');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [dishes, setDishes] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [darkMode, setDarkMode] = useState(true);
+  const [showAddDish, setShowAddDish] = useState(false);
+  const [editingDish, setEditingDish] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [newDish, setNewDish] = useState({
+    name: '',
+    description: '',
+    ingredients: '',
+    steps: '',
+    time: '',
+    notes: '',
+    image: '',
+    isNew: false
+  });
+  const [ideaForm, setIdeaForm] = useState({
+    name: '',
+    idea: '',
+    category: '',
+    service: ''
+  });
+  const [notification, setNotification] = useState(null);
+
+  const sections = [
+    { id: 'opus-soir', name: 'Opus Soir', icon: '🌙', gradient: 'from-indigo-500 to-purple-600' },
+    { id: 'opus-matin', name: 'Opus Matin', icon: '☀️', gradient: 'from-orange-400 to-pink-500' },
+    { id: 'menu-bar', name: 'Menu Bar', icon: '🍸', gradient: 'from-cyan-500 to-blue-600' },
+    { id: 'room-service', name: 'Room Service', icon: '🛎️', gradient: 'from-emerald-500 to-teal-600' }
+  ];
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  useEffect(() => {
+    const savedDishes = localStorage.getItem('brigade-dishes');
+    const savedDarkMode = localStorage.getItem('dark-mode');
+    if (savedDarkMode !== null) {
+      setDarkMode(savedDarkMode === 'true');
+    }
+    if (savedDishes) {
+      setDishes(JSON.parse(savedDishes));
+    } else {
+      setDishes({
+        'opus-soir': [
+          {
+            id: 1,
+            name: 'Filet de Bœuf Wellington',
+            description: 'Filet de bœuf enrobé de duxelles et pâte feuilletée',
+            ingredients: 'Filet de bœuf, champignons, pâte feuilletée, foie gras',
+            steps: '1. Saisir le filet à feu vif\n2. Préparer la duxelles\n3. Enrober de pâte feuilletée\n4. Cuire au four 25min à 200°C',
+            time: '45 minutes',
+            notes: 'Servir à 54°C à cœur',
+            image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=800',
+            isNew: true
+          }
+        ],
+        'opus-matin': [],
+        'menu-bar': [],
+        'room-service': []
+      });
+    }
+  }, []);
+
+  const saveDishes = (newDishes) => {
+    setDishes(newDishes);
+    localStorage.setItem('brigade-dishes', JSON.stringify(newDishes));
+  };
+
+  const toggleDarkMode = () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    localStorage.setItem('dark-mode', newMode);
+  };
+
+  const handleAdminLogin = () => {
+    if (passwordInput === 'Vivelafrance') {
+      setIsAdmin(true);
+      setShowAdminModal(false);
+      setPasswordInput('');
+      showNotification('Connecté en mode Admin ! 👨‍🍳');
+    } else {
+      showNotification('Mot de passe incorrect !', 'error');
+    }
+  };
+
+  const handleAddDish = () => {
+    if (!newDish.name || !newDish.description) {
+      showNotification('Nom et description obligatoires !', 'error');
+      return;
+    }
+
+    if (editingDish) {
+      const updatedDishes = {
+        ...dishes,
+        [activeSection]: (dishes[activeSection] || []).map(d =>
+          d.id === editingDish.id ? { ...newDish, id: editingDish.id } : d
+        )
+      };
+      saveDishes(updatedDishes);
+      showNotification('Plat modifié avec succès ! ✨');
+      setEditingDish(null);
+    } else {
+      const dish = { 
+        id: Date.now(), 
+        ...newDish,
+        isNew: true
+      };
+      const updatedDishes = {
+        ...dishes,
+        [activeSection]: [...(dishes[activeSection] || []), dish]
+      };
+      saveDishes(updatedDishes);
+      showNotification('Nouveau plat ajouté ! 🎉');
+    }
+
+    setShowAddDish(false);
+    setNewDish({
+      name: '',
+      description: '',
+      ingredients: '',
+      steps: '',
+      time: '',
+      notes: '',
+      image: '',
+      isNew: false
+    });
+  };
+
+  const handleEditDish = (dish) => {
+    setEditingDish(dish);
+    setNewDish({
+      name: dish.name,
+      description: dish.description,
+      ingredients: dish.ingredients || '',
+      steps: dish.steps || '',
+      time: dish.time || '',
+      notes: dish.notes || '',
+      image: dish.image || '',
+      isNew: dish.isNew || false
+    });
+    setShowAddDish(true);
+  };
+
+  const handleDeleteDish = (dishId) => {
+    const dishesClone = { ...dishes };
+    if (dishesClone[activeSection]) {
+      dishesClone[activeSection] = dishesClone[activeSection].filter(d => d.id !== dishId);
+    }
+    setDishes(dishesClone);
+    localStorage.setItem('brigade-dishes', JSON.stringify(dishesClone));
+    setDeleteConfirm(null);
+    showNotification('Plat supprimé', 'error');
+  };
+
+  const handleSubmitIdea = () => {
+    if (!ideaForm.name || !ideaForm.service || !ideaForm.category || !ideaForm.idea) {
+      showNotification('Tous les champs sont obligatoires !', 'error');
+      return;
+    }
+    showNotification('Ton idée a été envoyée ! 💡');
+    setIdeaForm({ name: '', idea: '', category: '', service: '' });
+  };
+
+  const filteredDishes = (dishes[activeSection] || []).filter(dish =>
+    dish.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dish.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const currentSection = sections.find(s => s.id === activeSection);
+
+  return (
+    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white' : 'bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900'}`}>
+      
+      {/* Notification Toast */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-[60] px-6 py-4 rounded-xl shadow-2xl backdrop-blur-lg border animate-slide-in ${
+          notification.type === 'success' 
+            ? 'bg-green-500/90 border-green-400 text-white' 
+            : 'bg-red-500/90 border-red-400 text-white'
+        }`}>
+          <div className="flex items-center gap-3">
+            {notification.type === 'success' ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
+            <span className="font-semibold">{notification.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <header className={`${darkMode ? 'bg-gray-800/50' : 'bg-white/50'} backdrop-blur-xl shadow-2xl sticky top-0 z-50 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl shadow-lg">
+                <ChefHat className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
+                  Brigade de Cuisine
+                </h1>
+                <p className="text-xs text-gray-500">Omni Hotels Excellence</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleDarkMode}
+                className={`p-3 rounded-xl transition-all duration-300 ${
+                  darkMode 
+                    ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-lg shadow-yellow-500/50 hover:shadow-yellow-500/70' 
+                    : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/50 hover:shadow-indigo-500/70'
+                } hover:scale-110`}
+              >
+                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+              {isAdmin ? (
+                <button
+                  onClick={() => {
+                    setIsAdmin(false);
+                    showNotification('Déconnexion admin');
+                  }}
+                  className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:shadow-lg hover:shadow-red-500/50 transition-all duration-300 hover:scale-105 font-semibold"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Admin
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowAdminModal(true)}
+                  className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl hover:shadow-lg hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105 font-semibold"
+                >
+                  <Lock className="w-4 h-4" />
+                  Admin
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex gap-2 mt-4 overflow-x-auto pb-2">
+            {sections.map(section => (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={`px-6 py-3 rounded-xl whitespace-nowrap transition-all duration-300 font-semibold ${
+                  activeSection === section.id
+                    ? `bg-gradient-to-r ${section.gradient} text-white shadow-lg scale-105`
+                    : darkMode
+                    ? 'bg-gray-700/50 hover:bg-gray-700 text-gray-300'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                <span className="mr-2">{section.icon}</span>
+                {section.name}
+              </button>
+            ))}
+            <button
+              onClick={() => setActiveSection('ideas')}
+              className={`px-6 py-3 rounded-xl whitespace-nowrap transition-all duration-300 font-semibold ${
+                activeSection === 'ideas'
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg scale-105'
+                  : darkMode
+                  ? 'bg-gray-700/50 hover:bg-gray-700 text-gray-300'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
+              💡 Vos Idées
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {activeSection !== 'ideas' ? (
+          <>
+            {/* Header Section */}
+            <div className="mb-8">
+              <div className={`p-8 rounded-2xl bg-gradient-to-r ${currentSection?.gradient} text-white shadow-2xl`}>
+                <h2 className="text-4xl font-bold mb-2 flex items-center gap-3">
+                  <span className="text-5xl">{currentSection?.icon}</span>
+                  {currentSection?.name}
+                </h2>
+                <p className="text-white/80">
+                  {(dishes[activeSection] || []).length} plat{(dishes[activeSection] || []).length !== 1 ? 's' : ''} dans cette section
+                </p>
+              </div>
+            </div>
+
+            {/* Search & Add */}
+            <div className="flex gap-4 mb-6 flex-col sm:flex-row">
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Rechercher un plat..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`w-full pl-12 pr-4 py-4 rounded-xl border-2 transition-all focus:ring-4 ${
+                    darkMode 
+                      ? 'bg-gray-800 border-gray-700 focus:border-cyan-500 focus:ring-cyan-500/20' 
+                      : 'bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500/20'
+                  }`}
+                />
+              </div>
+              {isAdmin && (
+                <button
+                  onClick={() => { 
+                    setEditingDish(null); 
+                    setNewDish({
+                      name: '',
+                      description: '',
+                      ingredients: '',
+                      steps: '',
+                      time: '',
+                      notes: '',
+                      image: '',
+                      isNew: false
+                    });
+                    setShowAddDish(true); 
+                  }}
+                  className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-500/50 transition-all duration-300 hover:scale-105 font-semibold"
+                >
+                  <Plus className="w-5 h-5" />
+                  Ajouter un plat
+                </button>
+              )}
+            </div>
+
+            {/* Dishes Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredDishes.length === 0 ? (
+                <div className="col-span-full text-center py-16">
+                  <div className={`inline-block p-8 rounded-2xl ${darkMode ? 'bg-gray-800/50' : 'bg-white'} shadow-xl`}>
+                    <ChefHat className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                    <p className="text-xl font-semibold text-gray-500 mb-2">Aucun plat dans cette section</p>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setEditingDish(null);
+                          setNewDish({
+                            name: '',
+                            description: '',
+                            ingredients: '',
+                            steps: '',
+                            time: '',
+                            notes: '',
+                            image: '',
+                            isNew: false
+                          });
+                          setShowAddDish(true);
+                        }}
+                        className="mt-4 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg transition-all font-semibold"
+                      >
+                        Ajouter le premier plat
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                filteredDishes.map(dish => (
+                  <div
+                    key={dish.id}
+                    className={`rounded-2xl overflow-hidden shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 ${
+                      darkMode ? 'bg-gray-800' : 'bg-white'
+                    } border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}
+                  >
+                    {dish.image ? (
+                      <div className="relative h-56 overflow-hidden">
+                        <img
+                          src={dish.image}
+                          alt={dish.name}
+                          loading="lazy"
+                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                        />
+                        {dish.isNew && (
+                          <div className="absolute top-3 right-3 px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" />
+                            NOUVEAU
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className={`h-56 flex items-center justify-center ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                        <ChefHat className="w-16 h-16 text-gray-400" />
+                      </div>
+                    )}
+                    
+                    <div className="p-5">
+                      <h3 className="text-2xl font-bold mb-2 bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
+                        {dish.name}
+                      </h3>
+                      <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {dish.description}
+                      </p>
+
+                      {dish.ingredients && (
+                        <div className={`mb-3 p-3 rounded-lg ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                          <h4 className="font-bold text-sm mb-1 flex items-center gap-2">
+                            <Flame className="w-4 h-4 text-orange-500" />
+                            Ingrédients
+                          </h4>
+                          <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {dish.ingredients}
+                          </p>
+                        </div>
+                      )}
+
+                      {dish.steps && (
+                        <div className={`mb-3 p-3 rounded-lg ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                          <h4 className="font-bold text-sm mb-1 flex items-center gap-2">
+                            <Star className="w-4 h-4 text-yellow-500" />
+                            Dressage
+                          </h4>
+                          <p className={`text-sm whitespace-pre-line ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {dish.steps}
+                          </p>
+                        </div>
+                      )}
+
+                      {dish.time && (
+                        <p className={`text-sm mb-3 flex items-center gap-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <Clock className="w-4 h-4" />
+                          {dish.time}
+                        </p>
+                      )}
+
+                      {dish.notes && (
+                        <div className={`mt-3 p-3 rounded-lg border-l-4 ${
+                          darkMode 
+                            ? 'bg-yellow-900/20 border-yellow-500 text-yellow-200' 
+                            : 'bg-yellow-50 border-yellow-500 text-yellow-900'
+                        }`}>
+                          <strong className="text-sm">⚠️ Note:</strong>
+                          <p className="text-sm mt-1">{dish.notes}</p>
+                        </div>
+                      )}
+
+                      {isAdmin && (
+                        <div className="flex gap-2 mt-4">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditDish(dish);
+                            }}
+                            className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl hover:shadow-lg transition-all font-semibold flex items-center justify-center gap-2"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                            Modifier
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirm(dish);
+                            }}
+                            className="flex-1 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all font-semibold flex items-center justify-center gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Supprimer
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        ) : (
+          /* Ideas Form */
+          <div className="max-w-2xl mx-auto">
+            <div className="mb-8 text-center">
+              <h2 className="text-5xl font-bold mb-3 bg-gradient-to-r from-pink-500 to-rose-600 bg-clip-text text-transparent">
+                💡 Partagez vos idées
+              </h2>
+              <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
+                Votre créativité fait notre excellence
+              </p>
+            </div>
+            
+            <div className={`p-8 rounded-2xl shadow-2xl border ${
+              darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+            }`}>
+              <div className="space-y-5">
+                <div>
+                  <label className="block font-semibold mb-2 flex items-center gap-2">
+                    👤 Votre nom
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={ideaForm.name}
+                    onChange={(e) => setIdeaForm({...ideaForm, name: e.target.value})}
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                      darkMode 
+                        ? 'bg-gray-700 border-gray-600 focus:border-pink-500 focus:ring-pink-500/20' 
+                        : 'bg-white border-gray-300 focus:border-pink-500 focus:ring-pink-500/20'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-2 flex items-center gap-2">
+                    🍽️ Service
+                  </label>
+                  <select
+                    required
+                    value={ideaForm.service}
+                    onChange={(e) => setIdeaForm({...ideaForm, service: e.target.value})}
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                      darkMode 
+                        ? 'bg-gray-700 border-gray-600 focus:border-pink-500 focus:ring-pink-500/20' 
+                        : 'bg-white border-gray-300 focus:border-pink-500 focus:ring-pink-500/20'
+                    }`}
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option value="opus-soir">🌙 Opus Soir</option>
+                    <option value="opus-matin">☀️ Opus Matin</option>
+                    <option value="menu-bar">🍸 Menu Bar</option>
+                    <option value="room-service">🛎️ Room Service</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-2 flex items-center gap-2">
+                    🎯 Catégorie
+                  </label>
+                  <select
+                    required
+                    value={ideaForm.category}
+                    onChange={(e) => setIdeaForm({...ideaForm, category: e.target.value})}
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                      darkMode 
+                        ? 'bg-gray-700 border-gray-600 focus:border-pink-500 focus:ring-pink-500/20' 
+                        : 'bg-white border-gray-300 focus:border-pink-500 focus:ring-pink-500/20'
+                    }`}
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option value="entree">🥗 Entrée</option>
+                    <option value="plat">🍖 Plat</option>
+                    <option value="dessert">🍰 Dessert</option>
+                    <option value="autre">✨ Autre</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold mb-2 flex items-center gap-2">
+                    💭 Votre idée
+                  </label>
+                  <textarea
+                    required
+                    value={ideaForm.idea}
+                    onChange={(e) => setIdeaForm({...ideaForm, idea: e.target.value})}
+                    rows="6"
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                      darkMode 
+                        ? 'bg-gray-700 border-gray-600 focus:border-pink-500 focus:ring-pink-500/20' 
+                        : 'bg-white border-gray-300 focus:border-pink-500 focus:ring-pink-500/20'
+                    }`}
+                    placeholder="Décrivez votre idée de plat, les ingrédients, l'inspiration..."
+                  />
+                </div>
+              </div>
+              
+              <button
+                onClick={handleSubmitIdea}
+                className="w-full mt-6 flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-xl hover:shadow-lg hover:shadow-pink-500/50 transition-all duration-300 hover:scale-105 font-bold text-lg"
+              >
+                <Send className="w-5 h-5" />
+                Envoyer l'idée
+              </button>
+              <p className={`text-sm mt-3 text-center ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                📧 Envoyé à arthur.leinster@omnihotels.com
+              </p>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className={`p-8 rounded-2xl max-w-md w-full shadow-2xl ${
+            darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white'
+          }`}>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Supprimer ce plat ?</h3>
+              <p className={`mb-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Êtes-vous sûr de vouloir supprimer <strong>"{deleteConfirm.name}"</strong> ? Cette action est irréversible.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
+                    darkMode 
+                      ? 'bg-gray-700 hover:bg-gray-600' 
+                      : 'bg-gray-200 hover:bg-gray-300'
+                  }`}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => handleDeleteDish(deleteConfirm.id)}
+                  className="flex-1 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:shadow-lg hover:shadow-red-500/50 transition-all font-semibold"
+                >
+                  Oui, supprimer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Login Modal */}
+      {showAdminModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className={`p-8 rounded-2xl max-w-md w-full shadow-2xl ${
+            darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white'
+          }`}>
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold">Connexion Admin</h3>
+            </div>
+            <input
+              type="password"
+              placeholder="Mot de passe"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
+              className={`w-full px-4 py-3 rounded-xl border-2 mb-4 transition-all focus:ring-4 ${
+                darkMode 
+                  ? 'bg-gray-700 border-gray-600 focus:border-blue-500 focus:ring-blue-500/20' 
+                  : 'bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500/20'
+              }`}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={handleAdminLogin}
+                className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl hover:shadow-lg transition-all font-semibold"
+              >
+                Se connecter
+              </button>
+              <button
+                onClick={() => { setShowAdminModal(false); setPasswordInput(''); }}
+                className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
+                  darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
+                }`}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Dish Modal */}
+      {showAddDish && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto p-4 animate-fade-in">
+          <div className={`p-8 rounded-2xl max-w-2xl w-full my-8 shadow-2xl ${
+            darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white'
+          }`}>
+            <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
+              {editingDish ? (
+                <>
+                  <Edit3 className="w-6 h-6 text-blue-500" />
+                  Modifier le plat
+                </>
+              ) : (
+                <>
+                  <Plus className="w-6 h-6 text-green-500" />
+                  Ajouter un nouveau plat
+                </>
+              )}
+            </h3>
+            
+            <div className="grid grid-cols-1 gap-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div>
+                <label className="block font-semibold mb-2 text-sm">Nom du plat *</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Filet de Bœuf Wellington"
+                  value={newDish.name}
+                  onChange={e => setNewDish({ ...newDish, name: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                    darkMode 
+                      ? 'bg-gray-700 border-gray-600 focus:border-green-500 focus:ring-green-500/20' 
+                      : 'bg-white border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+                  }`}
+                />
+              </div>
+              
+              <div>
+                <label className="block font-semibold mb-2 text-sm">Description *</label>
+                <input
+                  type="text"
+                  placeholder="Description courte du plat"
+                  value={newDish.description}
+                  onChange={e => setNewDish({ ...newDish, description: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                    darkMode 
+                      ? 'bg-gray-700 border-gray-600 focus:border-green-500 focus:ring-green-500/20' 
+                      : 'bg-white border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+                  }`}
+                />
+              </div>
+              
+              <div>
+                <label className="block font-semibold mb-2 text-sm">Ingrédients</label>
+                <input
+                  type="text"
+                  placeholder="Filet de bœuf, champignons, pâte feuilletée..."
+                  value={newDish.ingredients}
+                  onChange={e => setNewDish({ ...newDish, ingredients: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                    darkMode 
+                      ? 'bg-gray-700 border-gray-600 focus:border-green-500 focus:ring-green-500/20' 
+                      : 'bg-white border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+                  }`}
+                />
+              </div>
+              
+              <div>
+                <label className="block font-semibold mb-2 text-sm">Étapes de dressage</label>
+                <textarea
+                  placeholder="1. Saisir le filet&#10;2. Préparer la duxelles&#10;3. Enrober de pâte..."
+                  value={newDish.steps}
+                  onChange={e => setNewDish({ ...newDish, steps: e.target.value })}
+                  rows="4"
+                  className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                    darkMode 
+                      ? 'bg-gray-700 border-gray-600 focus:border-green-500 focus:ring-green-500/20' 
+                      : 'bg-white border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+                  }`}
+                />
+              </div>
+              
+              <div>
+                <label className="block font-semibold mb-2 text-sm">Temps de préparation</label>
+                <input
+                  type="text"
+                  placeholder="Ex: 45 minutes"
+                  value={newDish.time}
+                  onChange={e => setNewDish({ ...newDish, time: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                    darkMode 
+                      ? 'bg-gray-700 border-gray-600 focus:border-green-500 focus:ring-green-500/20' 
+                      : 'bg-white border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+                  }`}
+                />
+              </div>
+              
+              <div>
+                <label className="block font-semibold mb-2 text-sm">Notes importantes</label>
+                <input
+                  type="text"
+                  placeholder="Température, allergènes, conseils..."
+                  value={newDish.notes}
+                  onChange={e => setNewDish({ ...newDish, notes: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                    darkMode 
+                      ? 'bg-gray-700 border-gray-600 focus:border-green-500 focus:ring-green-500/20' 
+                      : 'bg-white border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+                  }`}
+                />
+              </div>
+              
+              <div>
+                <label className="block font-semibold mb-2 text-sm">URL de l'image</label>
+                <input
+                  type="text"
+                  placeholder="https://... (Clic droit → Copier l'adresse de l'image)"
+                  value={newDish.image}
+                  onChange={e => setNewDish({ ...newDish, image: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:ring-4 ${
+                    darkMode 
+                      ? 'bg-gray-700 border-gray-600 focus:border-green-500 focus:ring-green-500/20' 
+                      : 'bg-white border-gray-300 focus:border-green-500 focus:ring-green-500/20'
+                  }`}
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="isNew"
+                  checked={newDish.isNew}
+                  onChange={e => setNewDish({ ...newDish, isNew: e.target.checked })}
+                  className="w-5 h-5 rounded cursor-pointer"
+                />
+                <label htmlFor="isNew" className="font-semibold text-sm cursor-pointer flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-yellow-500" />
+                  Marquer comme "Nouveau"
+                </label>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleAddDish}
+                className="flex-1 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-500/50 transition-all font-bold text-lg"
+              >
+                {editingDish ? '💾 Sauvegarder' : '✨ Ajouter le plat'}
+              </button>
+              <button
+                onClick={() => { 
+                  setShowAddDish(false); 
+                  setEditingDish(null);
+                  setNewDish({
+                    name: '',
+                    description: '',
+                    ingredients: '',
+                    steps: '',
+                    time: '',
+                    notes: '',
+                    image: '',
+                    isNew: false
+                  });
+                }}
+                className={`px-6 py-4 rounded-xl font-semibold transition-all ${
+                  darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
+                }`}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slide-in {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default App;
